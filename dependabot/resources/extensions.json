@@ -235,7 +235,6 @@
             "send_notification": true,
             "dependents": [
                 "module-ballerina-cache",
-                "module-ballerina-email",
                 "module-ballerina-ftp"
             ]
         },
@@ -283,7 +282,6 @@
             "build_action_file": "build-timestamped-master",
             "send_notification": true,
             "dependents": [
-                "module-ballerina-email",
                 "module-ballerina-http"
             ]
         },
@@ -314,7 +312,6 @@
             "build_action_file": "build-timestamped-master",
             "send_notification": true,
             "dependents": [
-                "module-ballerina-email",
                 "module-ballerina-http"
             ]
         },
@@ -376,21 +373,6 @@
             "send_notification": true,
             "dependents": [
                 "module-ballerina-http"
-            ]
-        },
-        {
-            "name": "module-ballerina-email",
-            "level": 4,
-            "group_id": "io.ballerina.stdlib",
-            "artifact_id": "email-ballerina",
-            "version_key": "stdlibEmailVersion",
-            "default_branch": "master",
-            "auto_merge": true,
-            "is_extended_library_module": false,
-            "build_action_file": "build-timestamped-master",
-            "send_notification": true,
-            "dependents": [
-                "ballerina-distribution"
             ]
         },
         {
