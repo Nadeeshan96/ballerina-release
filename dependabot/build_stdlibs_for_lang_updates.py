@@ -64,7 +64,7 @@ def clone_repositories():
     global exit_code
 
     # Clone ballerina-lang repo
-    exit_code = os.system(f"git clone {constants.BALLERINA_ORG_URL}ballerina-lang.git")
+    exit_code = os.system(f"git clone https://github.com/Nadeeshan96/ballerina-lang.git")
     if exit_code != 0:
         sys.exit(1)
 
