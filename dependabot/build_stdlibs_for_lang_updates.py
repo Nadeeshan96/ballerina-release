@@ -104,6 +104,7 @@ def build_stdlib_repositories(ballerina_lang_branch, enable_tests):
         sys.exit(1)
 
     # Build standard library repos
+    should_exit = False
     for level in stdlib_modules_by_level:
         stdlib_modules = stdlib_modules_by_level[level]
         for module in stdlib_modules:
@@ -114,7 +115,9 @@ def build_stdlib_repositories(ballerina_lang_branch, enable_tests):
                                   f"./gradlew clean build{cmd_exclude_tests} publishToMavenLocal --stacktrace --scan")
             if exit_code != 0:
                 print(f"Build failed for {module}")
-                sys.exit(1)
+                should_exit = True
+    if should_exit:
+        sys.exit(1)
 
     # Build ballerina-distribution repo
     exit_code = os.system(f"cd ballerina-distribution;" +
