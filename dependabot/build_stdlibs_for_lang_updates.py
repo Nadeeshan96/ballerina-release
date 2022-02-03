@@ -118,15 +118,18 @@ def build_stdlib_repositories(ballerina_lang_branch, enable_tests):
                 should_exit = True
     if should_exit:
         sys.exit(1)
-
-    # Build ballerina-distribution repo
-    exit_code = os.system(f"cd ballerina-distribution;" +
-                    f"export packageUser={ballerina_bot_username};" +
-                    f"export packagePAT={ballerina_bot_token};" +
-                    f"./gradlew clean build{cmd_exclude_tests} publishToMavenLocal --stacktrace --scan")
-    if exit_code != 0:
-        print(f"Build failed for ballerina-distribution")
+    else:
+        print("All Standard Library Modules built successfully.")
         sys.exit(1)
+
+    # # Build ballerina-distribution repo
+    # exit_code = os.system(f"cd ballerina-distribution;" +
+    #                 f"export packageUser={ballerina_bot_username};" +
+    #                 f"export packagePAT={ballerina_bot_token};" +
+    #                 f"./gradlew clean build{cmd_exclude_tests} publishToMavenLocal --stacktrace --scan")
+    # if exit_code != 0:
+    #     print(f"Build failed for ballerina-distribution")
+    #     sys.exit(1)
 
 
 def change_version_to_snapshot():
@@ -154,10 +157,7 @@ def change_version_to_snapshot():
                     for line in config_file:
                         try:
                             name, value = line.split("=")
-                            if name.startswith("stdlib"):
-                                version = value.split("-")[0]
-                                value = version + "-SNAPSHOT\n"
-                            elif "ballerinaLangVersion" in name:
+                            if "ballerinaLangVersion" in name:
                                 value = lang_version
                             properties[name] = value
                         except ValueError:
