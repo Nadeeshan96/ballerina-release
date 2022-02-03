@@ -8,6 +8,7 @@ import sys
 stdlib_modules_by_level = dict()
 stdlib_modules_json_file = 'https://raw.githubusercontent.com/ballerina-platform/ballerina-standard-library/' \
                                'main/release/resources/stdlib_modules.json'
+stdlib_module_version_names = dict()
 stdlib_module_versions = dict()
 ballerina_lang_branch = "master"
 enable_tests = 'true'
@@ -58,6 +59,7 @@ def read_dependency_data(stdlib_modules_data):
         parent = module['name']
         level = module['level']
         stdlib_modules_by_level[level] = stdlib_modules_by_level.get(level, []) + [parent]
+        stdlib_module_version_names[parent] = module['version_key']
 
 
 def clone_repositories():
@@ -144,6 +146,23 @@ def change_version_to_snapshot():
 
     print("Lang Version:", lang_version)
 
+    # Get stdlib available version in the repos
+    for level in stdlib_modules_by_level:
+        stdlib_modules = stdlib_modules_by_level[level]
+        for module in stdlib_modules:
+            try:
+                with open(f"{module}/gradle.properties", 'r') as config_file:
+                    for line in config_file:
+                        try:
+                            name, value = line.split("=")
+                            if name == "version":
+                                stdlib_module_versions[stdlib_module_version_names[module]] = value.strip()
+                        except ValueError:
+                            continue
+            except FileNotFoundError:
+                print(f"Cannot find the gradle.properties file for {module}")
+                sys.exit(1)
+
     # Change dependent stdlib_module_versions & ballerina-lang version to SNAPSHOT in the stdlib modules
     for level in stdlib_modules_by_level:
         stdlib_modules = stdlib_modules_by_level[level]
@@ -155,8 +174,7 @@ def change_version_to_snapshot():
                         try:
                             name, value = line.split("=")
                             if name.startswith("stdlib"):
-                                version = value.split("-")[0]
-                                value = version + "-SNAPSHOT\n"
+                                value = stdlib_module_versions[name] + '\n'
                             elif "ballerinaLangVersion" in name:
                                 value = lang_version
                             properties[name] = value
@@ -180,8 +198,7 @@ def change_version_to_snapshot():
             try:
                 name, value = line.split("=")
                 if name.startswith("stdlib"):
-                    version = value.split("-")[0]
-                    value = version + "-SNAPSHOT\n"
+                    value = stdlib_module_versions[name] + '\n'
                 elif "ballerinaLangVersion" in name:
                     value = lang_version
                 properties[name] = value
