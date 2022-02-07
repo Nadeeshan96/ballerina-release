@@ -10,7 +10,9 @@ stdlib_modules_json_file = 'https://raw.githubusercontent.com/ballerina-platform
                                'main/release/resources/stdlib_modules.json'
 stdlib_module_version_names = dict()
 stdlib_module_versions = dict()
+module_names = dict()
 ballerina_lang_branch = "master"
+distribution_tag = "v2201.0.0"
 enable_tests = 'true'
 exit_code = 0
 
@@ -24,6 +26,7 @@ def main():
     global stdlib_module_versions
     global ballerina_lang_branch
     global enable_tests
+    global module_names
 
     if len(sys.argv) > 2:
         ballerina_lang_branch = sys.argv[1]
@@ -32,7 +35,6 @@ def main():
     read_stdlib_modules()
     if stdlib_modules_by_level:
         clone_repositories()
-        change_version_to_snapshot()
         build_stdlib_repositories(ballerina_lang_branch, enable_tests)
     else:
         print('Could not find standard library dependency data from', stdlib_modules_json_file)
@@ -55,14 +57,16 @@ def read_stdlib_modules():
 
 
 def read_dependency_data(stdlib_modules_data):
+    global module_names
     for module in stdlib_modules_data['modules']:
         parent = module['name']
         level = module['level']
         stdlib_modules_by_level[level] = stdlib_modules_by_level.get(level, []) + [parent]
         stdlib_module_version_names[parent] = module['version_key']
+        module_names[module['version_key'].strip()] = parent
 
 
-def clone_repositories():
+def clone_user_ballerina_lang_repo_and_get_lang_version():
     global exit_code
 
     # Clone ballerina-lang repo
@@ -74,18 +78,95 @@ def clone_repositories():
     os.system(f"cd ballerina-lang;git checkout {ballerina_lang_branch}")
     os.system("cd ballerina-lang;git status")
 
+    # Read ballerina-lang version
+    lang_version = ""
+    with open("ballerina-lang/gradle.properties", 'r') as config_file:
+        for line in config_file:
+            try:
+                name, value = line.split("=")
+                if name == "version":
+                    lang_version = value
+            except ValueError:
+                continue
+        config_file.close()
+
+    print("Lang Version:", lang_version)
+    return lang_version
+
+
+def clone_distribution_repo_and_get_version_tags(lang_version):
+    global exit_code
+    global distribution_tag
+    # Clone ballerina-distribution repo
+    exit_code = os.system(f"git clone -b {distribution_tag} {constants.BALLERINA_ORG_URL}ballerina-distribution.git --single-branch")
+    if exit_code != 0:
+        sys.exit(1)
+
+    # Change ballerina-lang version
+    properties = dict()
+    tags = dict()
+    with open("ballerina-distribution/gradle.properties", 'r') as config_file:
+        for line in config_file:
+            try:
+                name, value = line.split("=")
+                if name.startswith("stdlib"):
+                    tags[module_names[name.strip()]] = "v" + value.strip()
+                elif "ballerinaLangVersion" in name:
+                    value = lang_version
+                properties[name] = value
+            except ValueError:
+                continue
+        config_file.close()
+
+    with open("ballerina-distribution/gradle.properties", 'w') as config_file:
+        for prop in properties:
+            config_file.write(prop + "=" + properties[prop])
+        config_file.close()
+
+    return tags
+
+
+def change_stdlib_lang_versions(lang_version):
+    # Change dependent stdlib_module_versions & ballerina-lang version to SNAPSHOT in the stdlib modules
+    for level in stdlib_modules_by_level:
+        stdlib_modules = stdlib_modules_by_level[level]
+        for module in stdlib_modules:
+            try:
+                properties = dict()
+                with open(f"{module}/gradle.properties", 'r') as config_file:
+                    for line in config_file:
+                        try:
+                            name, value = line.split("=")
+                            if "ballerinaLangVersion" in name:
+                                value = lang_version
+                            properties[name] = value
+                        except ValueError:
+                            continue
+                    config_file.close()
+
+                with open(f"{module}/gradle.properties", 'w') as config_file:
+                    for prop in properties:
+                        config_file.write(prop + "=" + properties[prop])
+                    config_file.close()
+
+            except FileNotFoundError:
+                print(f"Cannot find the gradle.properties file for {module}")
+                sys.exit(1)
+
+
+def clone_repositories():
+    lang_version = clone_user_ballerina_lang_repo_and_get_lang_version()
+    tags = clone_distribution_repo_and_get_version_tags(lang_version)
+
     # Clone standard library repos
     for level in stdlib_modules_by_level:
         stdlib_modules = stdlib_modules_by_level[level]
         for module in stdlib_modules:
-            exit_code = os.system(f"git clone {constants.BALLERINA_ORG_URL}{module}.git")
+            exit_code = os.system(f"git clone -b {tags[module]} {constants.BALLERINA_ORG_URL}{module}.git")
             if exit_code != 0:
                 sys.exit(1)
 
-    # Clone ballerina-distribution repo
-    exit_code = os.system(f"git clone {constants.BALLERINA_ORG_URL}ballerina-distribution.git")
-    if exit_code != 0:
-        sys.exit(1)
+    change_stdlib_lang_versions(lang_version)
 
 
 def build_stdlib_repositories(ballerina_lang_branch, enable_tests):
