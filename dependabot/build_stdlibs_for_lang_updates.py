@@ -155,6 +155,7 @@ def change_stdlib_lang_versions(lang_version):
 
 
 def clone_repositories():
+    global exit_code
     lang_version = clone_user_ballerina_lang_repo_and_get_lang_version()
     tags = clone_distribution_repo_and_get_version_tags(lang_version)
 
@@ -162,7 +163,10 @@ def clone_repositories():
     for level in stdlib_modules_by_level:
         stdlib_modules = stdlib_modules_by_level[level]
         for module in stdlib_modules:
-            exit_code = os.system(f"git clone -b {tags[module]} {constants.BALLERINA_ORG_URL}{module}.git")
+            if module in tags:
+                exit_code = os.system(f"git clone -b {tags[module]} {constants.BALLERINA_ORG_URL}{module}.git")
+            else:
+                exit_code = os.system(f"git clone {constants.BALLERINA_ORG_URL}{module}.git")
             if exit_code != 0:
                 sys.exit(1)
 
